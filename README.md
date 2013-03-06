@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 Dal Course Scraper
 ==================
 
@@ -7,10 +6,9 @@ the online [course calendar](https://dalonline.dal.ca/PROD/fysktime.P_DisplaySch
 
 Usage
 -----
-Written in Python 3. This scraper depends on [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
-=======
-laddie-scraper
-==============
+Written in Python 2.7.
+Depends on [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/) and [Requests](http://docs.python-requests.org/en/latest/)
 
-Dalhousie Academic Timetable scraper.
->>>>>>> 03329d1e6d2bbe399ddb9d6c91cf79fc97846999
+Output:
+error.log : a list of all the rows that were not added to the database
+courses.db : an sqlite database with all the courses and classes.
