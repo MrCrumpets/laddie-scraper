@@ -19,9 +19,10 @@ def parse_string(el):
     return text.strip()
 
 def log(text):
-    print text
-    normal_log.write(text + "\n")
-    normal_log.flush()
+   # print text
+   # normal_log.write(text.encode('ascii', 'ignore') + u"\n")
+   # normal_log.flush()
+    pass
 
 def log_el(el):
     log(el.text.encode('utf-8').strip())
@@ -60,7 +61,7 @@ def parse_course(data):
     log("Title: " + title)
     return course_id
 
-def parse_class(data):
+def parse_class(course_id, data):
     try:
         crn = data[1]
         sec_id = data[2]
@@ -68,39 +69,32 @@ def parse_class(data):
         cr_hrs = data[4]
         tuit_code = data[5]
         tuit_bhrs = data[6]
-        i = 8;
-        days = time_start = time_end = location = None
-        if data[8] != 'C/D' and data[13] != 'C/D':
-            days = "".join(data[7:12])
-            time_start = data[13].split("-")[0]
-            time_end = data[13].split("-")[1]
-            location = data[14]
-            i = 14;
-        
-        enrol_max = data[i + 1]
-        enrol_cur = data[i + 2]
-        enrol_avail = data[i + 3]
-        enrol_wtlst = data[i + 4]
-        enrol_percent = data[i + 5]
-        xlist_max = data[i + 6]
-        xlist_cur = data[i + 7]
-        
-        log("CRN: " + crn)
-        log("Days: " + days)
-        
-        if xlist_max == '':
-            xlist_max = None
-            xlist_cur = None
+        skip = 6 # The number of columns to skip to the next block
+        days = location = time = ""
 
-        instructor = data[i + 8]
+        if data[6] == 'C/D':
+            skip = 0
+        elif data[11] == 'C/D':
+            skip = 6
+        else:
+            days = " ".join(data[6:11])
+            time = data[11]
+            location = data[12]
+        # Enrollment Info
+        instructor = data[14 + skip].split("\n")[0]
+        tuit_code = data[15 + skip]
+        tuit_bhrs = data[16 + skip]
+        log("CRN: " + crn) 
+        log("Days: " + days)
+        log("Time: " + time)
+        log("Instructor: '" + instructor + "'")
 
         values = (crn, course_id, sec_id, sec_type, cr_hrs, tuit_code, tuit_bhrs, days,
-                time_start, time_end, location, enrol_max, enrol_cur, enrol_avail, enrol_wtlst,
-                enrol_percent, xlist_max, xlist_cur, instructor)
-        # c.execute('INSERT INTO CLASSES VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values)
-    except (IndexError):
-        # error_log.write("Row failed: %s\n" % data)
-        print "Row failed"
+                time, location, instructor)
+        c.execute('INSERT INTO CLASSES VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values)
+    except IndexError as e:
+        error_log.write("Row failed: %s\n" % data)
+        print "Row failed", e
         error_log.flush()
 
 def scrape_url(url, subject):
@@ -125,8 +119,8 @@ def scrape_url(url, subject):
             log("New Course:")
             course_id = parse_course(data)
         elif course_id != None:            
-            log("New Class")
-            parse_class(data)
+            log("New Class:")
+            parse_class(course_id, data)
 
     return len(rows)
 
@@ -137,7 +131,7 @@ if __name__ == "__main__":
     c = init_db(conn) 
     f = open('util/courses') # List of faculties and their names (CSCI, MATH, etc.)
     subjects = f.read().split("\n")[:-1]
-    for subject in subjects[0:1]:
+    for subject in subjects:
         subj = subject.split(" ")[0]
         download_subject(subj)
     print "Scraping completed."
