@@ -19,9 +19,9 @@ def parse_string(el):
     return text.strip()
 
 def log(text):
-   # print text
-   # normal_log.write(text.encode('ascii', 'ignore') + u"\n")
-   # normal_log.flush()
+    # print text
+    # normal_log.write(text.encode('ascii', 'ignore') + u"\n")
+    # normal_log.flush()
     pass
 
 def log_el(el):
@@ -61,7 +61,9 @@ def parse_course(data):
     log("Title: " + title)
     return course_id
 
-def parse_class(course_id, data):
+def parse_class(course_id, data, row):
+    td_elements = list(map(lambda td: td.findAll(text=True), row.findAll('td')))
+    # print td_elements[6:11]
     try:
         crn = data[1]
         sec_id = data[2]
@@ -70,28 +72,27 @@ def parse_class(course_id, data):
         tuit_code = data[5]
         tuit_bhrs = data[6]
         skip = 6 # The number of columns to skip to the next block
-        days = location = time = ""
+        days = location = times = ""
 
         if data[6] == 'C/D':
             skip = 0
         elif data[11] == 'C/D':
             skip = 6
         else:
-            days = " ".join(data[6:11])
-            time = data[11]
+            # HOLY LIST COMPREHENSIONS BATMAN. This is a terrible piece of code. It collects the different days and times from the td's
+            # and merges them.
+            times = '|'.join([' '.join([td[i] for td in td_elements[6:12]]).encode('ascii', 'ignore') for i in range(len(td_elements[6]))])
             location = data[12]
         # Enrollment Info
         instructor = data[14 + skip].split("\n")[0]
         tuit_code = data[15 + skip]
         tuit_bhrs = data[16 + skip]
         log("CRN: " + crn) 
-        log("Days: " + days)
-        log("Time: " + time)
         log("Instructor: '" + instructor + "'")
 
-        values = (crn, course_id, sec_id, sec_type, cr_hrs, tuit_code, tuit_bhrs, days,
-                time, location, instructor)
-        c.execute('INSERT INTO CLASSES VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values)
+        values = (crn, course_id, sec_id, sec_type, cr_hrs, tuit_code, tuit_bhrs, 
+            times, location, instructor)
+        c.execute('INSERT INTO CLASSES VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', values)
     except IndexError as e:
         error_log.write("Row failed: %s\n" % data)
         print "Row failed", e
@@ -111,8 +112,7 @@ def scrape_url(url, subject):
     course_id = None
     for row in rows:
         # Get all the text from the <td>s
-        data = map(parse_string, row.findAll('td'))
-        data = list(data)
+        data = list(map(parse_string, row.findAll('td')))
         if data[0] == 'NOTE':
             continue
         if len(data) == 2: # Row is a new course heading 
@@ -120,7 +120,7 @@ def scrape_url(url, subject):
             course_id = parse_course(data)
         elif course_id != None:            
             log("New Class:")
-            parse_class(course_id, data)
+            parse_class(course_id, data, row)
 
     return len(rows)
 
